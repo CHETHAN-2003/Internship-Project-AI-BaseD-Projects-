@@ -1,0 +1,89 @@
+import speech_recognition as sr
+import pyttsx3
+import pywhatkit
+import datetime
+import wikipedia
+import webbrowser
+
+# Initialize the voice engine
+engine = pyttsx3.init()
+engine.setProperty('rate', 170)  # Speed of speech
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[1].id)  # Change to female voice
+
+
+# Speak function
+def talk(text):
+    engine.say(text)
+    engine.runAndWait()
+
+
+# Listen function
+def take_command():
+    listener = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening...")
+        talk("I am listening")
+        audio = listener.listen(source)
+
+    try:
+        command = listener.recognize_google(audio)
+        command = command.lower()
+        print(f"You said: {command}")
+    except sr.UnknownValueError:
+        talk("Sorry, I didn't catch that.")
+        return ""
+    except sr.RequestError:
+        talk("Speech service is unavailable.")
+        return ""
+    return command
+
+
+# Main function to process commands
+def run_jarvis():
+    command = take_command()
+    if not command:
+        return False  # Continue listening
+
+    if 'play' in command:
+        song = command.replace('play', '')
+        talk('Playing ' + song)
+        pywhatkit.playonyt(song)
+
+    elif 'time' in command:
+        time = datetime.datetime.now().strftime('%I:%M %p')
+        talk('Current time is ' + time)
+
+    elif 'who is' in command or 'what is' in command:
+        try:
+            person = command.replace('who is', '').replace('what is', '')
+            info = wikipedia.summary(person, sentences=2)
+            talk(info)
+        except:
+            talk("Sorry, I couldn't find information on that.")
+
+    elif 'open google' in command:
+        webbrowser.open("https://www.google.com")
+        talk("Opening Google")
+
+    elif 'open youtube' in command:
+        webbrowser.open("https://www.youtube.com")
+        talk("Opening YouTube")
+
+    elif 'exit' in command or 'stop' in command:
+        talk("Bye, Have a good day")
+        return True  # Exit the loop
+
+    else:
+        talk("Please say the command again.")
+
+    return False  # Continue the loop
+
+
+# Run continuously until user says "exit" or "stop"
+if __name__ == "__main__":
+    talk("Hi, I am Jarvis. How can I help you today?")
+    while True:
+        should_exit = run_jarvis()
+        if should_exit:
+            break
