@@ -1,0 +1,61 @@
+import cv2
+import numpy as np
+import os
+
+# Load DNN face detector
+modelFile = "res10_300x300_ssd_iter_140000.caffemodel"
+configFile = "deploy.prototxt"  # ✅ Corrected file name
+net = cv2.dnn.readNetFromCaffe(configFile, modelFile)
+
+# Function to detect and crop face from an image
+def detect_face(img):
+    if img is None:
+        return None
+    h, w = img.shape[:2]
+    blob = cv2.dnn.blobFromImage(img, 1.0, (300, 300), (104.0, 177.0, 123.0))
+    net.setInput(blob)
+    detections = net.forward()
+
+    for i in range(detections.shape[2]):
+        confidence = detections[0, 0, i, 2]
+        if confidence > 0.7:
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            (x1, y1, x2, y2) = box.astype("int")
+            # Ensure the box is within image bounds
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(w, x2), min(h, y2)
+            return img[y1:y2, x1:x2]
+    return None
+
+# Function to calculate embedding (dummy version using pixel values)
+def get_embedding(face_img):
+    face_img = cv2.resize(face_img, (100, 100)).flatten()
+    return face_img / 255.0
+
+# Load known face
+known_img = cv2.imread("person1.jpg")
+known_face = detect_face(known_img)
+if known_face is None:
+    print("❌ No face found in known image.")
+    exit()
+known_embed = get_embedding(known_face)
+
+# Load unknown face
+unknown_img = cv2.imread("unknown2.jpg")
+unknown_face = detect_face(unknown_img)
+if unknown_face is None:
+    print("❌ No face found in unknown image.")
+    exit()
+unknown_embed = get_embedding(unknown_face)
+
+# Compare using cosine similarity
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+similarity = cosine_similarity(known_embed, unknown_embed)
+
+print(f"🔍 Similarity Score: {similarity:.2f}")
+if similarity > 0.85:
+    print("✅ Face match!")
+else:
+    print("❌ Different person.")
